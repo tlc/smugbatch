@@ -27,7 +27,7 @@
           <command>smugup</command>
           <arg><option>--email email@address</option></arg>
           <arg><option>--password password</option></arg>
-          <arg>--album album<arg>--category category</arg><arg>--settings quicksettings</arg></arg>
+          <arg>--album album<arg>--category category</arg><arg>--subcategory subcategory</arg><arg>--settings quicksettings</arg></arg>
 	  <arg><option>--quiet</option></arg>
           <arg><option>--debug</option></arg>
           <arg><option>--version</option></arg>
@@ -42,6 +42,14 @@
 	  address or password is not specified, you will be prompted for it.
 	  If the album name is not specified, you will be promted with a list
 	  of the album names in this account and you can choose one from there.
+	</para>
+	<para>
+	  If an album specified on the command line does not exist,
+	  the album will be created.
+	  When creating an album, the category, subcategory and quicksettings
+	  may be specified, but they will not be created.  They must match
+	  existing items.  When not creating an album, the category,
+	  subcategory and quicksettings values are not used.
 	</para>
 	<para>
 	  smugup supports both images and videos to be uploaded, as long as

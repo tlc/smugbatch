@@ -139,7 +139,7 @@ int main(int argc, char *argv[], char *envp[])
 		return -1;
 	}
 
-	album = select_album(album_title, NULL, NULL, session);
+	album = select_album(album_title, NULL, NULL, NULL, session);
 	if (!album)
 		return -1;
 

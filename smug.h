@@ -112,6 +112,7 @@ extern int upload_file(struct session *session, struct filename *filename,
 extern int upload_files(struct session *session, struct album *album);
 extern struct album *select_album(const char *album_title,
 				  const char *category_title,
+				  const char *subcategory_title,
 				  const char *quicksettings_name,
 				  struct session *session);
 extern int smug_login(struct session *session);
@@ -121,6 +122,7 @@ extern char *smug_get_category_id(const char *category_title,
 				  struct session *session);
 extern struct album *smug_create_album(const char *album_title,
 				       const char *category_title,
+				       const char *subcategory_title,
 				       const char *quicksettings_name,
 				       struct session *session);
 extern int smug_get_albums(struct session *session);

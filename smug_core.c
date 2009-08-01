@@ -47,11 +47,16 @@ static char *smugmug_album_list_url =
 static char *smugmug_album_create_url =
 	"https://api.smugmug.com/hack/rest/1.2.0/?"
 		"method=smugmug.albums.create"
-		"&SessionID=%s&Title=%s&CategoryID=%s&AlbumTemplateID=%s";
+		"&SessionID=%s&Title=%s&CategoryID=%s&SubCategoryID=%s"
+		"&AlbumTemplateID=%s";
 static char *smugmug_category_list_url =
 	"https://api.smugmug.com/hack/rest/1.2.0/?"
 		"method=smugmug.categories.get"
 		"&SessionID=%s";
+static char *smugmug_subcategory_list_url =
+	"https://api.smugmug.com/hack/rest/1.2.0/?"
+		"method=smugmug.subcategories.get"
+		"&CategoryID=%s&SessionID=%s";
 static char *smugmug_quicksettings_list_url =
 	"https://api.smugmug.com/hack/rest/1.2.0/?"
 		"method=smugmug.albumtemplates.get"
@@ -591,7 +596,8 @@ int upload_files(struct session *session, struct album *album)
 }
 
 struct album *select_album(const char *album_title, const char *category_title,
-			   const char *qs_name, struct session *session)
+			   const char *subcategory_title, const char *qs_name,
+			   struct session *session)
 {
 	struct album *album;
 	int found_album;
@@ -604,7 +610,7 @@ struct album *select_album(const char *album_title, const char *category_title,
 			fprintf(stdout, "\t%3d: %s\n",
 				album->number, album->title);
 		fprintf(stdout, "\n");
-		fprintf(stdout, "Please enter number of album to upload to: ");
+		fprintf(stdout, "Please enter the number of the album: ");
 		string = get_string_from_stdin();
 		if (string) {
 			album_no = atoi(string);
@@ -633,7 +639,8 @@ struct album *select_album(const char *album_title, const char *category_title,
 		}
 		if (!found_album && category_title) {
 			album = smug_create_album(album_title, category_title,
-						  qs_name, session);
+						  subcategory_title, qs_name,
+						  session);
 			if (album)
 				found_album = 1;
 		}
@@ -788,7 +795,7 @@ char *smug_get_quicksettings_id(const char *qs_name, struct session *session)
 	CURL *curl = NULL;
 	CURLcode res;
 
-	if (!session)
+	if (!session || !qs_name)
 		return NULL;
 
 	curl_buf = smug_curl_buffer_alloc();
@@ -858,6 +865,86 @@ char *smug_get_quicksettings_id(const char *qs_name, struct session *session)
  * returns a pointer to a buffer that must be later freed by the caller
  * with a call to free().
  */
+char *smug_get_subcategory_id(const char *subcategory_title,
+			      const char* category_id, struct session *session)
+{
+	char url[1000];
+	struct smug_curl_buffer *curl_buf;
+	CURL *curl = NULL;
+	CURLcode res;
+
+	if (!session || !subcategory_title)
+		return NULL;
+
+	curl_buf = smug_curl_buffer_alloc();
+	if (!curl_buf)
+		return NULL;
+
+	curl = curl_init();
+	if (!curl) {
+		smug_curl_buffer_free(curl_buf);
+		return NULL;
+	}
+
+	sprintf(url, smugmug_subcategory_list_url, category_id,
+		 session->session_id);
+	dbg("url = %s\n", url);
+	curl_easy_setopt(curl, CURLOPT_URL, url);
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_callback);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, curl_buf);
+	res = curl_easy_perform(curl);
+	curl_easy_cleanup(curl);
+
+	if (res) {
+		fprintf(stderr, "error(%d) trying to get category\n", res);
+		smug_curl_buffer_free(curl_buf);
+		return NULL;
+	}
+
+	char *rsp_stat = find_value(curl_buf->data, "rsp stat", NULL);
+	if (!rsp_stat) {
+		smug_curl_buffer_free(curl_buf);
+		return NULL;
+	}
+	if (strcmp(rsp_stat, "fail") == 0) {
+		char *msg = find_value(curl_buf->data, "msg", NULL);
+		printf("error to get subcategory: %s\n", msg);
+		free(msg);
+		smug_curl_buffer_free(curl_buf);
+		return NULL;
+	}
+	free(rsp_stat);
+
+
+	char *temp = curl_buf->data;
+	char *id = NULL;
+	char *title = NULL;
+	while (1) {
+		id = find_value(temp, "SubCategory id", &temp);
+		/* NOTE:  In 1.2.1 "Title" will change to "Name" */
+		title = find_value(temp, "Title", &temp);
+		if (!id || !title)
+			break;
+		dbg("%s: %s\n", id, title);
+		if (strcmp(title, subcategory_title) == 0) {
+			free(title);
+			smug_curl_buffer_free(curl_buf);
+			return id;
+		}
+	}
+
+	if (id)
+		free(id);
+	if (title)
+		free(title);
+	smug_curl_buffer_free(curl_buf);
+	return NULL;
+}
+
+/**
+ * returns a pointer to a buffer that must be later freed by the caller
+ * with a call to free().
+ */
 char *smug_get_category_id(const char *category_title, struct session *session)
 {
 	char url[1000];
@@ -865,7 +952,7 @@ char *smug_get_category_id(const char *category_title, struct session *session)
 	CURL *curl = NULL;
 	CURLcode res;
 
-	if (!session)
+	if (!session || !category_title)
 		return NULL;
 
 	curl_buf = smug_curl_buffer_alloc();
@@ -933,7 +1020,9 @@ char *smug_get_category_id(const char *category_title, struct session *session)
 }
 
 struct album *smug_create_album(const char *album_title,
-				const char *category_title, const char *qs_name,
+				const char *category_title,
+				const char *subcategory_title,
+				const char *qs_name,
 				struct session *session)
 {
 	char url[1000];
@@ -948,32 +1037,65 @@ struct album *smug_create_album(const char *album_title,
 	if (!category_id)
 		return NULL;
 
-	char *qs_id = smug_get_quicksettings_id(qs_name, session);
-	if (!category_id) {
-		free(category_id);
-		return NULL;
+	char *subcategory_id = NULL;
+	if (subcategory_title)
+	{
+		subcategory_id = smug_get_subcategory_id(subcategory_title,
+							 category_id, session);
+		if (!subcategory_id)
+		{
+			free(category_id);
+			printf("subcategory not found: %s\n",
+				subcategory_title);
+			return NULL;
+		}
+	}
+
+	char *qs_id = NULL;
+	if (qs_name)
+	{
+		qs_id = smug_get_quicksettings_id(qs_name, session);
+		if (!qs_id)
+		 {
+			free(category_id);
+			if (subcategory_id)
+				free(subcategory_id);
+			printf("quick settings not found: %s\n", qs_name);
+			return NULL;
+		}
 	}
 
 	curl_buf = smug_curl_buffer_alloc();
 	if (!curl_buf) {
 		free(category_id);
-		free(qs_id);
+		if (subcategory_id)
+			 free(subcategory_id);
+		if (qs_id)
+			 free(qs_id);
 		return NULL;
 	}
 
 	curl = curl_init();
 	if (!curl) {
 		free(category_id);
-		free(qs_id);
+		if (subcategory_id)
+			 free(subcategory_id);
+		if (qs_id)
+			 free(qs_id);
 		smug_curl_buffer_free(curl_buf);
 		return NULL;
 	}
 
-	sprintf(url, smugmug_album_create_url, session->session_id, album_title,
-		category_id, qs_id);
+	char* escaped_title = curl_easy_escape(curl, album_title, 0);
+	sprintf(url, smugmug_album_create_url, session->session_id,
+		escaped_title, category_id, subcategory_id, qs_id);
+	curl_free(escaped_title);
 	dbg("url = %s\n", url);
 	free(category_id);
-	free(qs_id);
+	if (subcategory_id)
+		 free(subcategory_id);
+	if (qs_id)
+		 free(qs_id);
 
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_callback);

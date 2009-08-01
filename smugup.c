@@ -42,6 +42,7 @@ static void display_help(void)
 	fprintf(stdout, "  --email email@address\n");
 	fprintf(stdout, "  --password password\n");
 	fprintf(stdout, "  --album album [ --category category"
+				" --subcategory subcategory"
 				" --settings quicksettings ]\n");
 	fprintf(stdout, "  --quiet\n");
 	fprintf(stdout, "  --debug\n");
@@ -56,6 +57,7 @@ int main(int argc, char *argv[], char *envp[])
 		{ "password", 1, NULL, 'p' },
 		{ "album", 1, NULL, 'a' },
 		{ "category", 1, NULL, 'c' },
+		{ "subcategory", 1, NULL, 'u' },
 		{ "settings", 1, NULL, 's' },
 		{ "help", 0, NULL, 'h' },
 		{ "quiet", 0, NULL, 'q' },
@@ -66,6 +68,7 @@ int main(int argc, char *argv[], char *envp[])
 	struct album *album;
 	char *album_title = NULL;
 	char *category_title = NULL;
+	char *subcategory_title = NULL;
 	char *quicksettings_name = NULL;
 	int retval;
 	int option;
@@ -81,7 +84,7 @@ int main(int argc, char *argv[], char *envp[])
 	smug_parse_configfile(session);
 
 	while (1) {
-		option = getopt_long_only(argc, argv, "dqe:p:a:c:s:h",
+		option = getopt_long_only(argc, argv, "dqe:p:a:c:s:h:u",
 					  options, NULL);
 		if (option == -1)
 			break;
@@ -109,6 +112,10 @@ int main(int argc, char *argv[], char *envp[])
 			category_title = strdup(optarg);
 			dbg("category_title = %s\n", category_title);
 			break;
+		case 'u':
+			subcategory_title = strdup(optarg);
+			dbg("subcategory_title = %s\n", subcategory_title);
+			break;
 		case 's':
 			quicksettings_name = strdup(optarg);
 			dbg("quicksettings_name = %s\n", quicksettings_name);
@@ -125,8 +132,9 @@ int main(int argc, char *argv[], char *envp[])
 		}
 	}
 
-	if ((category_title || quicksettings_name) && !album_title) {
-		fprintf(stdout, "Category and Settings requires Title.");
+	if ((category_title || subcategory_title || quicksettings_name)
+			&& !album_title) {
+		fprintf(stdout, "(Sub)Category and Settings requires Title.");
 		display_help();
 		goto exit;
 	}
@@ -171,8 +179,8 @@ int main(int argc, char *argv[], char *envp[])
 		fprintf(stderr, "Error calculating md5s\n");
 		return -1;
 	}
-	album = select_album(album_title, category_title, quicksettings_name,
-			     session);
+	album = select_album(album_title, category_title, subcategory_title,
+			     quicksettings_name, session);
 	if (!album)
 		return -1;
 	retval = upload_files(session, album);
