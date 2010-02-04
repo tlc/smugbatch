@@ -14,7 +14,7 @@
 smugls - list files in a smugmug.com gallery
 .SH "SYNOPSIS"
 .HP 7
-\fBsmugls\fR [\fB\-\-email\ email@address\fR] [\fB\-\-password\ password\fR] [\fB\-\-album\ album\fR] [\fB\-\-debug\fR] [\fB\-\-version\fR] [\fB\-\-help\fR]
+\fBsmugls\fR [\fB\-\-email\ email@address\fR] [\fB\-\-password\ password\fR] [\fB\-\-album\ album\fR] [\fB\-\-debug\fR] [\fB\-\-long\fR] [\fB\-\-field\-separator\fR] [\fB\-\-version\fR] [\fB\-\-help\fR]
 .SH "DESCRIPTION"
 .PP
 smugls lists all of the files in a specified smugmug\.com gallery\.
@@ -33,6 +33,16 @@ Specify the password of your smugmug\.com account\.
 \fB\-\-debug\fR
 .RS 4
 Print a whole bunch of debugging messages to stdout\.
+.RE
+.PP
+\fB\-\-long\fR
+.RS 4
+Add the Category, Subcategory, Size and MD5Sum to the usual output fields\.
+.RE
+.PP
+\fB\-\-field\-separator fs\fR
+.RS 4
+Separate the output fields by the character of your choice\.
 .RE
 .PP
 \fB\-\-version\fR

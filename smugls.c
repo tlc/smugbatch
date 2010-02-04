@@ -42,6 +42,8 @@ static void display_help(void)
 	fprintf(stdout, "  --email email@address\n");
 	fprintf(stdout, "  --password password\n");
 	fprintf(stdout, "  --album album\n");
+	fprintf(stdout, "  --field-separator\n");
+	fprintf(stdout, "  --long\n");
 	fprintf(stdout, "  --version\n");
 	fprintf(stdout, "  --debug\n");
 	fprintf(stdout, "  --help\n");
@@ -59,6 +61,8 @@ int main(int argc, char *argv[], char *envp[])
 		{ "email", 1, NULL, 'e' },
 		{ "password", 1, NULL, 'p' },
 		{ "album", 1, NULL, 'a' },
+		{ "field-separator", 1, NULL, 'f' },
+		{ "long", 0, NULL, 'l' },
 		{ "version", 0, NULL, 'v' },
 		{ "help", 0, NULL, 'h' },
 		{ }
@@ -67,8 +71,10 @@ int main(int argc, char *argv[], char *envp[])
 	struct album *album;
 	struct filename *filename;
 	char *album_title = NULL;
+	int longout = 0;
 	int retval;
 	int option;
+	char field_separator = ' ';
 
 	session = session_alloc();
 	if (!session) {
@@ -80,13 +86,16 @@ int main(int argc, char *argv[], char *envp[])
 	smug_parse_configfile(session);
 
 	while (1) {
-		option = getopt_long_only(argc, argv, "de:p:a:h",
+		option = getopt_long_only(argc, argv, "dle:p:a:f:h",
 					  options, NULL);
 		if (option == -1)
 			break;
 		switch (option) {
 		case 'd':
 			debug = 1;
+			break;
+		case 'l':
+			longout = 1;
 			break;
 		case 'e':
 			if (session->email)
@@ -103,6 +112,10 @@ int main(int argc, char *argv[], char *envp[])
 		case 'a':
 			album_title = strdup(optarg);
 			dbg("album_title = %s\n", album_title);
+			break;
+		case 'f':
+			field_separator = optarg[0];
+			dbg("field_separator = %c\n", field_separator);
 			break;
 		case 'v':
 			display_version();
@@ -150,13 +163,28 @@ int main(int argc, char *argv[], char *envp[])
 	}
 
 	/* print out the files */
-	fprintf(stdout, "ID        Key   Filename\n");
+	if (longout)
+		fprintf(stdout, "ID        Key   Filename     Category        Subcategory Size    MD5Sum\n");
+	else
+		fprintf(stdout, "ID        Key   Filename\n");
 	list_for_each_entry(filename, &album->files, entry) {
 		char *name = filename->filename;
 		if (strlen(name) == 0)
 			name = "<no name>";
-		fprintf(stdout, "%s %s %s\n", filename->id, filename->key,
-			name);
+		if (longout)
+			fprintf(stdout, "%s%c%s%c%s%c%s%c%s%c%s%c%s\n",
+				filename->id, field_separator,
+				filename->key, field_separator,
+				name, field_separator,
+				album->category, field_separator,
+				album->subcategory, field_separator,
+				filename->size, field_separator,
+				filename->md5_string);
+		else
+			fprintf(stdout, "%s%c%s%c%s\n",
+				filename->id, field_separator,
+				filename->key, field_separator,
+				name);
 	}
 
 	free(album_title);

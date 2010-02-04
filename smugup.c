@@ -84,7 +84,7 @@ int main(int argc, char *argv[], char *envp[])
 	smug_parse_configfile(session);
 
 	while (1) {
-		option = getopt_long_only(argc, argv, "dqe:p:a:c:s:h:u",
+		option = getopt_long_only(argc, argv, "dqe:p:a:c:s:u:h",
 					  options, NULL);
 		if (option == -1)
 			break;

@@ -29,6 +29,8 @@
           <arg><option>--password password</option></arg>
           <arg><option>--album album</option></arg>
           <arg><option>--debug</option></arg>
+          <arg><option>--long</option></arg>
+          <arg><option>--field-separator</option></arg>
           <arg><option>--version</option></arg>
           <arg><option>--help</option></arg>
         </cmdsynopsis>
@@ -61,6 +63,18 @@
             <term><option>--debug</option></term>
             <listitem>
               <para>Print a whole bunch of debugging messages to stdout.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><option>--long</option></term>
+            <listitem>
+              <para>Add the Category, Subcategory, Size and MD5Sum to the usual output fields.</para>
+            </listitem>
+          </varlistentry>
+          <varlistentry>
+            <term><option>--field-separator fs</option></term>
+            <listitem>
+              <para>Separate the output fields by the character of your choice.</para>
             </listitem>
           </varlistentry>
           <varlistentry>

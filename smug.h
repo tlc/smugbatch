@@ -43,18 +43,23 @@ struct album {
 	char *id;
 	char *key;
 	char *title;
+	char *category;
+	char *subcategory;
 	int number;
 	struct list_head files;
 };
 
+#define MD5_LEN_MAX	16
 struct filename {
 	struct list_head entry;
 	char *filename;
 	char *basename;
-	unsigned char md5[16];
+	unsigned char md5[MD5_LEN_MAX];
 	char *id;
 	char *key;
 	char *caption;
+	char *size;
+	char *md5_string;
 	char *original_url;
 };
 

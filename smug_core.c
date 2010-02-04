@@ -318,6 +318,8 @@ int get_albums(struct smug_curl_buffer *buffer, struct session *session)
 	char *id;
 	char *key;
 	char *title;
+	char *category;
+	char *subcategory;
 	int found_one = 0;
 	int album_number = 0;
 
@@ -331,17 +333,35 @@ int get_albums(struct smug_curl_buffer *buffer, struct session *session)
 		title = find_value(temp, "Title", &temp);
 		if (!title)
 			break;
-		dbg("%s: %s: %s\n", id, key, title);
+		// We don't want the id, but we need to seek find_value
+		category = find_value(temp, "Category id", &temp);
+		if (!category)
+			break;
+		category = find_value(temp, "Name", &temp); // Cat name
+		if (!category)
+			break;
+		// We don't want the id, but we need to seek find_value
+		subcategory = find_value(temp, "SubCategory id", &temp);
+		if (subcategory)
+			subcategory = find_value(temp, "Name", &temp);
+		else
+			subcategory = strdup("");
+		dbg("%s: %s: %s: %s: %s\n", id, key, title,
+						category, subcategory);
 		album = zalloc(sizeof(*album));
 		INIT_LIST_HEAD(&album->files);
 		album->id = id;
 		album->key = key;
 		album->title = title;
+		album->category = category;
+		album->subcategory = subcategory;
 		album->number = ++album_number;
 
 		list_add_tail(&album->entry, &session->albums);
 		found_one++;
 	}
+
+	// NEEDFIX: error path does not clear memory
 
 	if (!found_one)
 		return -EINVAL;
@@ -356,6 +376,8 @@ static int get_images(struct smug_curl_buffer *buffer, struct album *album)
 	char *key;
 	char *name;
 	char *caption;
+	char *size;
+	char *md5;
 	char *original_url;
 	int found_one = 0;
 
@@ -372,11 +394,17 @@ static int get_images(struct smug_curl_buffer *buffer, struct album *album)
 		caption = find_value(temp, "Caption", &temp);
 		if (!caption)
 			break;
+		size = find_value(temp, "Size", &temp);
+		if (!size)
+			break;
+		md5 = find_value(temp, "MD5Sum", &temp);
+		if (!md5)
+			break;
 		original_url = find_value(temp, "OriginalURL", &temp);
 		if (!original_url)
 			break;
-		dbg("%s: %s: %s: %s: %s\n",
-		    id, key, name, caption, original_url);
+		dbg("%s: %s: %s: %s: %s: %s: %s:\n",
+		    id, key, name, caption, original_url, size, md5);
 		filename = zalloc(sizeof(*filename));
 		if (!filename)
 			break;
@@ -384,10 +412,14 @@ static int get_images(struct smug_curl_buffer *buffer, struct album *album)
 		filename->key = key;
 		filename->filename = name;
 		filename->caption = caption;
+		filename->size = size;
+		filename->md5_string = md5;
 		filename->original_url = original_url;
 		list_add_tail(&filename->entry, &album->files);
 		found_one++;
 	}
+
+	// NEEDFIX: error path does not clear memory
 
 	if (!found_one)
 		return -EINVAL;
@@ -440,7 +472,7 @@ int generate_md5s(struct list_head *files)
 			fclose(fp);
 			return -err;
 		}
-		memcpy(filename->md5, md5, 16);
+		memcpy(filename->md5, md5, MD5_LEN_MAX);
 		sprintf_md5(md5_string, &md5[0]);
 		dbg("md5 of %s is %s\n", filename->filename, md5_string);
 		fclose(fp);
