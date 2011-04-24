@@ -968,6 +968,7 @@ char *smug_get_subcategory_id(const char *subcategory_title,
 	sprintf(url, smugmug_subcategory_list_url, category_id,
 		 session->session_id);
 	dbg("url = %s\n", url);
+	curl_set_cookie(curl, session->su_cookie);
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, curl_callback);
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, curl_buf);
